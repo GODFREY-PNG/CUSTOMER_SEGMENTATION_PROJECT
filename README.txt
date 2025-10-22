@@ -75,9 +75,6 @@ Clone the repo, install dependencies, and run in JupyterLab:
 pip install -r requirements.txt
 jupyter notebook
 
-## Contact
-
-For questions or customizations, reach out to [GODFREY IMBINDI ADEMBESA] at [godfreyimbindi@gmail.com].  
  MIT licensed.
 
 ---
