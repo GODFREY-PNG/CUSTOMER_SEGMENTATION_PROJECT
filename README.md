@@ -4,7 +4,10 @@
 
 This project groups customers by actual behaviour — what they buy, how often,
 how they respond to campaigns — then serves those segments through an API
-and a React dashboard the marketing team can use directly.
+and a Streamlit dashboard the marketing team can use directly.
+
+**Live demo:** [https://customer-segmentation-iq.streamlit.app/]
+**API:** [https://customersegmentation-production-4685.up.railway.app]
 
 
 ## What I Found
@@ -68,6 +71,8 @@ the clusters were actually distinct and not overlapping noise.
 
 
 ## Project Structure
+
+```
 CUSTOMER_SEGMENTATION/
 ├── data/
 │   └── MARKETING CAMPAIGN DATA.csv
@@ -77,10 +82,6 @@ CUSTOMER_SEGMENTATION/
 │   ├── 03_feature_selection.py
 │   ├── 04_model_training.py
 │   └── 05_segment_analysis.py
-├── frontend/
-│   └── src/
-│       ├── App.jsx
-│       └── main.jsx
 ├── models/
 │   └── market_segmentation_model.pkl
 ├── outputs/
@@ -89,9 +90,14 @@ CUSTOMER_SEGMENTATION/
 │   ├── data_model_ready.csv
 │   ├── data_with_labels.csv
 │   └── *.png / *.html
+├── app.py
 ├── main.py
 ├── run_pipeline.py
 └── requirements.txt
+-----market_clustering_analysis.ipynb
+-----ReadMe.md
+
+```
 
 
 ## Running It
@@ -100,7 +106,7 @@ CUSTOMER_SEGMENTATION/
 ```bash
 git clone https://github.com/GODFREY-PNG/customer_segmentation.git
 cd customer_segmentation
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -120,10 +126,9 @@ Runs at `http://127.0.0.1:8000` · Docs at `/docs`
 
 **Start the dashboard**
 ```bash
-cd frontend
-npm install
-npm run dev
+streamlit run app.py
 ```
+Runs at `http://localhost:8501`
 
 
 ## API
@@ -149,10 +154,9 @@ curl -X POST http://127.0.0.1:8000/predict \
 **`GET /analytics`** — returns full segment stats for the dashboard.
 
 
-
 ## Stack
 
-Python · Pandas · Scikit-learn · FastAPI · Uvicorn · Plotly · Seaborn · React · Vite
+Python · Pandas · Scikit-learn · FastAPI · Uvicorn · Streamlit · Plotly · Seaborn
 
 
 ## Honest Limitations
