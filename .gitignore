@@ -17,3 +17,5 @@ node_modules/
 dist/
 .DS_Store
 outputs/*.html
+.ipynb_checkpoints/
+outputs/.ipynb_checkpoints/
