@@ -1,66 +1,140 @@
 # Customer Segmentation — Marketing Campaign Analysis
 
-Most marketing teams send the same message to every customer and hope something sticks. This project explores a different approach — using real campaign data to find natural customer groups, understand what makes each group different, and serve those predictions through an API that any application can call.
+2,239 customers. One marketing strategy. That's the problem.
 
----
+This project groups customers by actual behaviour — what they buy, how often,
+how they respond to campaigns — then serves those segments through an API
+and a Streamlit dashboard the marketing team can use directly.
 
-## The Problem
+**Live demo:** [https://customer-segmentation-iq.streamlit.app/]
+**API:** [https://customersegmentation-production-4685.up.railway.app]
 
-A retail company ran several marketing campaigns across 2,240 customers and collected data on what each customer bought, how much they spent, how often they visited, and how they responded to promotions. The data existed but nobody had used it to answer a simple question: **are all these customers actually the same, or are there distinct groups that need different treatment?**
 
-Treating a high-spending loyal customer the same way you treat a price-sensitive browser is a waste of budget on one end and a missed opportunity on the other.
+## What I Found
 
----
-
-## The Data
-
-The dataset comes from a real marketing campaign and includes 2,240 customer records with 29 columns covering:
-
-- **Demographics** — year of birth, education level, marital status, income
-- **Purchase behaviour** — spend across wines, fruits, meat, fish, sweets and gold products
-- **Channel behaviour** — purchases made in-store, through the web, and through catalogue
-- **Engagement** — number of web visits per month, deals purchased, campaigns accepted
-- **Recency** — days since the last purchase
-
-The data had a few issues worth mentioning. About 1% of income values were missing, which I filled with the median since income skews right. A small number of customers had unrealistic ages (above 90) or odd marital status entries like `YOLO` and `Absurd` — those were cleaned before any modelling began.
-
----
-
-## How I Used It
-
-The goal was to let the data decide the groups rather than define them upfront, so I went with unsupervised learning.
-
-**Feature engineering first.** Instead of feeding raw columns into the model, I built features that actually meant something — total spend across all product categories, total purchases across all channels, customer age from birth year, and how long each person had been a customer. This reduced noise and gave the model cleaner signals to work with.
-
-**Feature selection.** With 20+ potential features, I checked variance across all numeric columns and selected the 8 that carried the most signal: `NumDealsPurchases`, `NumWebVisitsMonth`, `TotalPurchases`, `Age`, `Recency`, `CustomerTenure`, `TotalSpend`, and `Income`. I also ran a correlation check — some features overlapped, but each one covered a different business dimension so I kept them all.
-
-**Choosing K.** I tested K-Means from K=2 to K=12, using both inertia (elbow method) and silhouette scores together. K=2 gave the best silhouette score but produced groups too broad to be useful. K=3 balanced a reasonable score (~0.27) with three segments that were genuinely different from each other in ways a marketing team could actually act on.
-
-**The pipeline.** I wrapped `StandardScaler` and `KMeans` into a single sklearn pipeline so scaling happens automatically — the model always sees normalised input whether you're training or predicting. No chance of forgetting to scale at inference time.
-
----
-
-## What the Model Found
-
-| Segment | Size | Avg. Income | Avg. Spend | Avg. Purchases |
+| Segment | Customers | Avg Spend | Avg Income | Avg Purchases |
 |---|---|---|---|---|
-| Budget Shoppers | 1,008 (45%) | $34,625 | $98 | 5.9 |
-| High Value Champions | 770 (34%) | $73,915 | $1,224 | 19.1 |
-| Mid-Tier Regulars | 461 (21%) | $53,210 | $685 | 16.1 |
+| High Value Champions | 770 (34%) | $1,223 | $73,902 | 19 |
+| Budget Shoppers | 1,008 (45%) | $681 | $53,164 | 16 |
+| Occasional Browsers | 461 (21%) | $98 | $34,562 | 6 |
 
-A few things stood out. Champions spend 12x more than Budget Shoppers but visit the website less — they prefer catalogue and in-store. Mid-Tier customers earn well but spend moderately, which suggests an upsell opportunity rather than a lost cause. Budget Shoppers browse frequently but rarely convert, which points toward discount-led re-engagement rather than premium offers.
+34% of customers drive the majority of revenue.
+The other 66% need a completely different approach — or you're spending
+campaign budget where it won't convert.
 
-I used PCA to compress the 8 features down to 2 dimensions and plot the clusters — the separation was clear enough to confirm the model found real structure and not just noise.
+## How I Built It
 
----
+**Data Cleaning first**
 
-## The API
+Three issues in the raw data that would have broken clustering silently:
+- Marital status had entries like `YOLO` and `Absurd` — mapped to `Single`
+- Income had ~1% missing — filled with median, not mean, because income is right-skewed
+- A handful of ages above 90 — removed as entry errors, not real customers
 
-The trained model is served through a FastAPI application with two endpoints.
+**Feature engineering**
 
-**`POST /predict`** — send a customer's features, get back their segment, a description, and a recommended strategy.
+Raw columns were too granular. I collapsed them into six signals
+that actually describe how a customer behaves:
 
-**`GET /analytics`** — returns full segment statistics and key insights across the entire customer base.
+| Feature | What it captures |
+|---|---|
+| `TotalSpend` | Spend across all product categories |
+| `TotalPurchases` | Purchases across all channels |
+| `TotalCampaignsAccepted` | How often they respond to campaigns |
+| `CustomerTenure` | Days since joining |
+| `EducationLevel` | Ordinal encoding (1–4) |
+| `Age` | Derived dynamically from birth year |
+
+**Feature selection**
+
+I measured variance across all numeric columns and kept the top 8.
+Low-variance columns look almost identical across customers —
+they add noise without helping the model separate anyone.
+
+Selected: `NumDealsPurchases`, `NumWebVisitsMonth`, `TotalPurchases`,
+`Age`, `Recency`, `CustomerTenure`, `TotalSpend`, `Income`
+
+**Picking K**
+
+Tested K=2 through K=12 using inertia and silhouette score together.
+K=2 peaked on silhouette but the groups were too broad to act on.
+K=3 gave a score of ~0.35 with three segments that are genuinely
+different in ways a marketing team can do something with.
+
+Everything — scaling and model — lives inside a single sklearn Pipeline
+so new customers get transformed the same way at prediction time.
+
+**Confirming the clusters**
+
+PCA compressed the 8 features to 2 dimensions to visually check
+the clusters were actually distinct and not overlapping noise.
+
+
+## Project Structure
+
+```
+CUSTOMER_SEGMENTATION/
+├── data/
+│   └── MARKETING CAMPAIGN DATA.csv
+├── scripts/
+│   ├── 01_data_cleaning.py
+│   ├── 02_feature_engineering.py
+│   ├── 03_feature_selection.py
+│   ├── 04_model_training.py
+│   └── 05_segment_analysis.py
+├── models/
+│   └── market_segmentation_model.pkl
+├── outputs/
+│   ├── data_cleaned.csv
+│   ├── data_engineered.csv
+│   ├── data_model_ready.csv
+│   ├── data_with_labels.csv
+│   └── *.png / *.html
+├── app.py
+├── main.py
+├── run_pipeline.py
+└── requirements.txt
+-----market_clustering_analysis.ipynb
+-----ReadMe.md
+
+```
+
+
+## Running It
+
+**Install**
+```bash
+git clone https://github.com/GODFREY-PNG/customer_segmentation.git
+cd customer_segmentation
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Run the full pipeline**
+```bash
+python run_pipeline.py
+```
+Runs all five scripts in order. Saves cleaned data, plots, and the
+trained model to their folders automatically.
+
+**Start the API**
+```bash
+uvicorn main:app --reload
+```
+Runs at `http://127.0.0.1:8000` · Docs at `/docs`
+
+**Start the dashboard**
+```bash
+streamlit run app.py
+```
+Runs at `http://localhost:8501`
+
+
+## API
+
+**`POST /predict`** — takes a customer profile, returns their segment,
+a description, and a recommended campaign strategy.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/predict \
@@ -77,59 +151,19 @@ curl -X POST http://127.0.0.1:8000/predict \
   }'
 ```
 
-Interactive docs available at `http://127.0.0.1:8000/docs` once the server is running.
+**`GET /analytics`** — returns full segment stats for the dashboard.
 
----
-
-## Project Structure
-
-```
-CUSTOMER_SEGMENTATION/
-├── 01_data_cleaning.py         # missing values, outliers, marital status fixes
-├── 02_feature_engineering.py   # spend totals, age, tenure, campaign engagement
-├── 03_feature_selection.py     # variance analysis, correlation heatmap, top 8 features
-├── 04_model_training.py        # elbow + silhouette selection, pipeline, model saved to models/
-├── 05_segment_analysis.py      # profiles, PCA scatter, business recommendations
-├── main.py                     # FastAPI app
-├── run_pipeline.py             # runs all 5 scripts in order
-├── models/
-│   └── market_segmentation_model.pkl
-├── outputs/
-│   ├── data_cleaned.csv
-│   ├── data_engineered.csv
-│   ├── data_model_ready.csv
-│   ├── data_with_labels.csv
-│   └── *.png / *.html          # all charts saved here
-└── requirements.txt
-```
-
----
-
-## Running It
-
-```bash
-# clone and install
-git clone https://github.com/GODFREY-PNG/customer_segmentation.git
-cd customer_segmentation
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# run the full pipeline
-python run_pipeline.py
-
-# start the API
-uvicorn main:app --reload
-```
-
----
 
 ## Stack
 
-Python · Pandas · Scikit-learn · FastAPI · Uvicorn · Plotly · Seaborn · Matplotlib
+Python · Pandas · Scikit-learn · FastAPI · Uvicorn · Streamlit · Plotly · Seaborn
 
----
 
-## What I'd Do Differently with More Time
+## Honest Limitations
 
-The silhouette score of 0.27 is decent for real-world customer data but not exceptional. A few things I'd explore: DBSCAN or Gaussian Mixture Models to handle the cluster overlap better, adding a `/retrain` endpoint so the model can update as new campaign data comes in, and connecting to a live database instead of CSVs. Containerising with Docker would also make deployment cleaner.
+Silhouette score of ~0.35 is reasonable for real customer data
+but the cluster boundaries aren't sharp. Three things worth exploring:
+
+- DBSCAN or Gaussian Mixture Models to handle the overlap differently
+- A `/retrain` endpoint so the model updates as new campaign data arrives
+- Docker setup to make deployment environment-independent

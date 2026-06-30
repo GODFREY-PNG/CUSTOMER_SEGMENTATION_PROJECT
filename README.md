@@ -24,7 +24,7 @@ campaign budget where it won't convert.
 
 ## How I Built It
 
-**Cleaning first**
+**Data Cleaning first**
 
 Three issues in the raw data that would have broken clustering silently:
 - Marital status had entries like `YOLO` and `Absurd` — mapped to `Single`
